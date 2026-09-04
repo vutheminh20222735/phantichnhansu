@@ -39,35 +39,35 @@ THEME = Theme()
 NAV_SECTIONS = [
     (
         "OVERVIEW",
-        [("dashboard", "Tổng quan", "Bức tranh nhân sự & rủi ro nghỉ việc")],
+        [("dashboard", "Tổng quan", "KPI & rủi ro nghỉ việc")],
     ),
     (
         "DATA",
         [
-            ("data", "Dữ liệu", "Từ điển cột, kiểu dữ liệu, mẫu bản ghi"),
-            ("upload", "Nhập Dataset", "Tải CSV mới và chọn biến mục tiêu"),
-            ("quality", "Chất lượng dữ liệu", "Missing, trùng lặp, outlier, làm sạch"),
+            ("data", "Dữ liệu", "Từ điển cột & mẫu"),
+            ("upload", "Nhập Dataset", "Upload CSV"),
+            ("quality", "Chất lượng dữ liệu", "Missing · trùng · outlier"),
         ],
     ),
     (
         "ANALYTICS",
         [
-            ("eda", "Phân tích EDA", "Thống kê mô tả và mối quan hệ với nghỉ việc"),
-            ("viz", "Trực quan hóa", "Thư viện biểu đồ có chú thích"),
+            ("eda", "Phân tích EDA", "Thống kê & quan hệ"),
+            ("viz", "Trực quan hóa", "Thư viện biểu đồ"),
         ],
     ),
     (
         "AI / ML",
         [
-            ("model", "Mô hình AI", "Phân loại nghỉ việc & hồi quy thu nhập"),
-            ("predict", "Dự báo rủi ro", "Chấm điểm nguy cơ nghỉ việc theo hồ sơ"),
+            ("model", "Mô hình AI", "Phân loại & hồi quy"),
+            ("predict", "Dự báo rủi ro", "Chấm điểm hồ sơ"),
         ],
     ),
     (
         "RESULTS",
         [
-            ("insights", "Insights", "Phát hiện từ dữ liệu hiện tại"),
-            ("recs", "Khuyến nghị", "Hành động đề xuất cho HR"),
+            ("insights", "Insights", "Phát hiện từ dữ liệu"),
+            ("recs", "Khuyến nghị", "Đề xuất cho HR"),
         ],
     ),
 ]

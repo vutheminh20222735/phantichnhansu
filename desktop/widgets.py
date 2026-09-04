@@ -11,7 +11,7 @@ import pandas as pd
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
 
-from desktop.theme import FILTER_ROLE_LABELS, THEME
+from desktop.theme import THEME
 
 
 def font(size: int = 13, weight: str = "normal") -> ctk.CTkFont:
@@ -510,61 +510,6 @@ def safe_chart(builder) -> tuple[Figure | None, str, str | None]:
         return result, "", None
     except Exception as exc:  # noqa: BLE001
         return None, "", str(exc)
-
-
-def compact_filter_bar(
-    parent,
-    df: pd.DataFrame,
-    filter_vars: dict,
-    columns: list[str],
-    on_change: Callable,
-) -> ctk.CTkFrame:
-    box = ctk.CTkFrame(
-        parent,
-        fg_color=THEME.surface,
-        corner_radius=10,
-        border_width=1,
-        border_color=THEME.border,
-        height=72,
-    )
-    box.pack(fill="x", padx=6, pady=(6, 4))
-    box.pack_propagate(False)
-
-    inner = ctk.CTkFrame(box, fg_color="transparent")
-    inner.pack(fill="both", expand=True, padx=8, pady=8)
-
-    ctk.CTkLabel(
-        inner, text="FILTER", font=font(9, "bold"), text_color=THEME.text_muted
-    ).pack(side="left", padx=(4, 8))
-
-    filter_vars.clear()
-    for col in columns:
-        if col not in df.columns:
-            continue
-        cell = ctk.CTkFrame(inner, fg_color="transparent")
-        cell.pack(side="left", padx=4)
-        label = FILTER_ROLE_LABELS.get(col, col)
-        ctk.CTkLabel(cell, text=label, font=font(9), text_color=THEME.text_muted).pack(
-            anchor="w"
-        )
-        opts = ["Tất cả"] + sorted(df[col].dropna().astype(str).unique().tolist(), key=str)
-        var = ctk.StringVar(value="Tất cả")
-        filter_vars[col] = var
-        ctk.CTkOptionMenu(
-            cell,
-            values=opts,
-            variable=var,
-            width=118,
-            height=28,
-            font=font(11),
-            fg_color=THEME.surface_alt,
-            button_color=THEME.brand,
-            button_hover_color=THEME.brand_soft,
-            text_color=THEME.text,
-            dropdown_fg_color=THEME.surface,
-            command=lambda _=None: on_change(),
-        ).pack(anchor="w")
-    return box
 
 
 def primary_button(parent, text: str, command: Callable, **kwargs) -> ctk.CTkButton:

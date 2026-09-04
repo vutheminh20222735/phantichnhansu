@@ -1,4 +1,4 @@
-"""Dự báo nguy cơ nghỉ việc cho nhân viên mới."""
+"""Dự báo nguy cơ nghỉ việc cho nhân viên."""
 
 from __future__ import annotations
 
@@ -10,10 +10,7 @@ from src.utils import LEAVE_LABEL, STAY_LABEL
 
 
 def risk_band(probability: float) -> str:
-    """Phân mức nguy cơ minh họa (prototype).
-
-    0–30% Low, 30–60% Medium, 60–100% High.
-    """
+    """0–30% Low, 30–60% Medium, ≥60% High."""
     pct = probability * 100
     if pct < 30:
         return "Low"
@@ -27,11 +24,6 @@ def predict_attrition(
     employee_features: dict[str, Any] | pd.DataFrame,
     feature_columns: list[str] | None = None,
 ) -> dict[str, Any]:
-    """Dự báo xác suất nghỉ việc.
-
-    Returns:
-        probability (0-1), prediction label, risk band, message
-    """
     if isinstance(employee_features, dict):
         row = pd.DataFrame([employee_features])
     else:
@@ -40,7 +32,7 @@ def predict_attrition(
     if feature_columns is not None:
         missing = [c for c in feature_columns if c not in row.columns]
         if missing:
-            raise ValueError(f"Thiếu feature bắt buộc: {missing}")
+            raise ValueError(f"Thiếu feature: {missing}")
         row = row[feature_columns]
 
     if hasattr(model, "predict_proba"):
@@ -59,10 +51,6 @@ def predict_attrition(
         "message": (
             f"Nguy cơ nghỉ việc: {proba * 100:.1f}%\n"
             f"Dự đoán: {pred_label}\n"
-            f"Mức (prototype): {band}"
-        ),
-        "disclaimer": (
-            "Các ngưỡng Low/Medium/High chỉ là ngưỡng minh họa cho prototype, "
-            "không phải tiêu chuẩn HR thực tế."
+            f"Mức rủi ro: {band}"
         ),
     }

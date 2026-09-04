@@ -1,9 +1,4 @@
-"""
-PeopleRisk AI — Desktop HR Analytics (CustomTkinter).
-
-Flow: Dataset → Quality → EDA → Viz → Model → Prediction → Insights → Recs
-Không dùng web. Mọi metric/insight lấy từ dataset đang active.
-"""
+"""PeopleRisk AI — Desktop HR Analytics."""
 
 from __future__ import annotations
 
@@ -33,6 +28,7 @@ from desktop.dynamic_charts import (
     chart_rate_by_category,
     gallery_specs,
 )
+from desktop.perf import AnalysisCache, debounce, df_content_id, filter_signature, tune_matplotlib_fast
 from desktop.theme import FILTER_ROLE_LABELS, NAV_SECTIONS, THEME
 from desktop.widgets import (
     ScrollableFrame,
@@ -43,7 +39,6 @@ from desktop.widgets import (
     font,
     insight_card,
     make_kpi_card,
-    metric_chip,
     panel,
     primary_button,
     quality_status_card,
@@ -55,10 +50,9 @@ from desktop.widgets import (
     show_dataframe,
     status_pill,
 )
-from src.analysis.correlation import analyze_correlation
 from src.analysis.descriptive import descriptive_statistics
 from src.analysis.dynamic_eda import compute_kpis_dynamic, run_research_questions
-from src.data.loader import get_column_types, load_dataset, load_uploaded_dataset
+from src.data.loader import load_dataset, load_uploaded_dataset
 from src.data.schema_detector import build_schema, detect_target_candidates
 from src.data.validator import validate_dataset
 from src.insights.dynamic_insights import (
@@ -68,7 +62,6 @@ from src.insights.dynamic_insights import (
 from src.modeling.evaluate import (
     evaluate_all_classifiers,
     evaluate_regression,
-    explain_confusion_hr,
     get_rf_feature_importance,
     plot_confusion_matrix,
     plot_feature_importance,
@@ -79,7 +72,6 @@ from src.modeling.train import train_classification_models, train_salary_regress
 from src.preprocessing.cleaner import clean_dataset, detect_outliers_iqr
 from src.preprocessing.transformer import get_feature_columns
 from src.utils import DEFAULT_DATA_PATH, MODELS_DIR, apply_filters, format_vnd, format_vnd_compact
-from desktop.perf import AnalysisCache, debounce, df_content_id, filter_signature, tune_matplotlib_fast
 
 tune_matplotlib_fast()
 ctk.set_appearance_mode("light")
@@ -123,8 +115,7 @@ class PeopleRiskApp(ctk.CTk):
         self.sidebar_dataset_lbl = None
         self.cache = AnalysisCache()
         self._dataset_id = df_content_id(self.df_raw)
-        self._pending_jobs: list[str] = []
-        self._page_gen = 0  # tăng khi đổi trang — hủy job cũ
+        self._page_gen = 0
 
         configure_treeview_style(self)
         self._build_shell()
@@ -528,7 +519,7 @@ class PeopleRiskApp(ctk.CTk):
                 if i.get("group") != "Overview" and i.get("severity") in ("HIGH", "MEDIUM")
             ]
             if not signals:
-                body_text(rest, "Không có tín hiệu HIGH/MEDIUM trên bộ lọc hiện tại.", muted=True)
+                body_text(rest, "Không có tín hiệu rủi ro HIGH/MEDIUM.", muted=True)
             else:
                 for idx, ins in enumerate(signals[:4], 1):
                     insight_card(
@@ -549,7 +540,7 @@ class PeopleRiskApp(ctk.CTk):
                         row=0, column=i, sticky="nsew", padx=3
                     )
             else:
-                body_text(rest, "Chưa train model — vào Mô hình AI để huấn luyện.", muted=True)
+                body_text(rest, "Chưa huấn luyện mô hình.", muted=True)
 
             section_title(rest, "Recommended Actions")
             recs = generate_recommendations_dynamic(insights)
@@ -601,9 +592,8 @@ class PeopleRiskApp(ctk.CTk):
     # ============================================================ UPLOAD
     def _page_upload(self) -> None:
         root = self.content
-        box = panel(root, "NHẬP DATASET HR", "Kéo thả không hỗ trợ trên desktop — chọn file CSV")
+        box = panel(root, "Nhập dataset", "Chọn file CSV hoặc dùng bộ dữ liệu mẫu")
         box.pack(fill="x", padx=8, pady=10)
-        body_text(box, "Upload CSV mới → validate → chọn target → xác nhận. Không train model ngay.", muted=True)
 
         btns = ctk.CTkFrame(box, fg_color="transparent")
         btns.pack(padx=12, pady=12, anchor="w")
@@ -611,7 +601,11 @@ class PeopleRiskApp(ctk.CTk):
         secondary_button(btns, "Sử dụng dataset mẫu", self._use_default, width=180).pack(side="left", padx=4)
 
         if self.pending_df is None:
-            body_text(root, f"Dataset đang active: {self.dataset_name} ({len(self.df_raw):,}×{self.df_raw.shape[1]})", muted=True)
+            body_text(
+                root,
+                f"Đang dùng: {self.dataset_name} ({len(self.df_raw):,}×{self.df_raw.shape[1]})",
+                muted=True,
+            )
             return
 
         sch = self.pending_schema or build_schema(self.pending_df)
@@ -631,7 +625,7 @@ class PeopleRiskApp(ctk.CTk):
         candidates = sch.get("target_candidates") or detect_target_candidates(self.pending_df)
         section_title(root, "Chọn biến mục tiêu (Target)")
         if not candidates:
-            body_text(root, "⚠ Không tìm thấy biến mục tiêu phù hợp. Chọn thủ công bất kỳ cột nào.")
+            body_text(root, "Không tìm thấy cột mục tiêu phù hợp — chọn thủ công.")
             candidates = list(self.pending_df.columns)
         self.pending_target_var = ctk.StringVar(value=candidates[0])
         ctk.CTkOptionMenu(
@@ -790,7 +784,7 @@ class PeopleRiskApp(ctk.CTk):
         specs = gallery_specs(df, self.schema["roles"], self.target)
         if not specs:
             status.configure(text="")
-            body_text(host, "Không tạo được biểu đồ — kiểm tra schema dataset.")
+            body_text(host, "Không tạo được biểu đồ.")
             return
         status.configure(text=f"Gallery {len(specs)} biểu đồ — đang tải…")
 
@@ -862,11 +856,11 @@ class PeopleRiskApp(ctk.CTk):
         secondary_button(btns, "Huấn luyện hồi quy thu nhập", train_reg, width=210).pack(side="left", padx=3)
 
         if self.eval_result is None:
-            body_text(root, "Chưa có mô hình — nhấn Huấn luyện phân loại.", muted=True)
+            body_text(root, "Chưa có mô hình phân loại.", muted=True)
         else:
             best = self.eval_result["best_model_name"]
             m = self.eval_result["results"][best]["metrics"]
-            section_title(root, f"Hiệu năng mô hình — {best}", "Ưu tiên Recall & F1 khi phát hiện nghỉ việc")
+            section_title(root, f"Hiệu năng — {best}")
             mr = ctk.CTkFrame(root, fg_color="transparent")
             mr.pack(fill="x", padx=4)
             for i, k in enumerate(["Accuracy", "Precision", "Recall", "F1", "ROC-AUC"]):
@@ -874,9 +868,9 @@ class PeopleRiskApp(ctk.CTk):
                 make_kpi_card(mr, k, f"{m[k]:.4f}", tone="accent" if k in ("Recall", "F1") else "brand").grid(
                     row=0, column=i, sticky="nsew", padx=3
                 )
-            section_title(root, "Model Comparison")
+            section_title(root, "So sánh mô hình")
             show_dataframe(root, self.eval_result["metrics_table"], height=90, page_size=5)
-            conclusion = panel(root, "Kết luận chọn model")
+            conclusion = panel(root, "Model được chọn")
             conclusion.pack(fill="x", padx=6, pady=6)
             body_text(conclusion, self.eval_result["selection_reason"].replace("**", ""))
 
@@ -890,7 +884,6 @@ class PeopleRiskApp(ctk.CTk):
                 fig = plot_confusion_matrix(ev["confusion_matrix"], name)
                 embed_figure(cell, fig, 250, f"Confusion — {name}")
                 plt.close(fig)
-                body_text(cell, explain_confusion_hr(ev["tn"], ev["fp"], ev["fn"], ev["tp"]).replace("**", ""), muted=True, wrap=480)
 
             fig = plot_roc_curves(self.eval_result["results"], self.train_result["y_test"])
             embed_figure(root, fig, 300, "ROC Curve")
@@ -905,13 +898,10 @@ class PeopleRiskApp(ctk.CTk):
             embed_figure(root, fig, 300, "Feature Importance")
             plt.close(fig)
 
-        section_title(root, "Hồi quy thu nhập (Linear Regression)", "Đánh giá MAE · MSE · RMSE · R²")
+        section_title(root, "Hồi quy thu nhập")
         if self.salary_eval is None:
-            income = self.schema["roles"].get("income")
-            if not income:
-                body_text(root, "Dataset không có biến numeric phù hợp cho Salary Regression.", muted=True)
-            else:
-                body_text(root, f"Có cột `{income}` — nhấn Huấn luyện hồi quy thu nhập.", muted=True)
+            if not self.schema["roles"].get("income"):
+                body_text(root, "Không có cột thu nhập.", muted=True)
         else:
             m = self.salary_eval["metrics"]
             show_dataframe(root, pd.DataFrame([m]), height=70, page_size=3)
@@ -921,7 +911,6 @@ class PeopleRiskApp(ctk.CTk):
     def _page_predict(self) -> None:
         root = self.content
         roles = self.schema["roles"]
-        body_text(root, "Wizard nhập liệu theo nhóm. Ngưỡng Low/Medium/High chỉ là prototype.", muted=True)
 
         groups = [
             ("PERSONAL", ["age", "gender", "marital", "location"]),
@@ -1028,7 +1017,7 @@ class PeopleRiskApp(ctk.CTk):
             meta = joblib.load(meta_path)
             # nếu target/dataset đổi → retrain
             if meta.get("target") != self.target:
-                raise ValueError("Model cũ khác target — vui lòng Train lại ở Mô hình AI.")
+                raise ValueError("Model không khớp target hiện tại — huấn luyện lại.")
             best = meta.get("best_model_name", "Random Forest")
             path = lr if best == "Logistic Regression" and lr.exists() else rf
             return joblib.load(path), meta["feature_columns"], best
@@ -1044,7 +1033,7 @@ class PeopleRiskApp(ctk.CTk):
         df = self._filtered()
         self._filter_caption(df)
         if df.empty:
-            body_text(root, "Không còn bản ghi với bộ lọc hiện tại. Đổi lọc ở Tổng quan / EDA / Trực quan.")
+            body_text(root, "Không còn bản ghi.")
             return
         insights = self._cached_insights(df)
         section_title(root, f"Insights ({len(insights)})")
@@ -1061,13 +1050,13 @@ class PeopleRiskApp(ctk.CTk):
         df = self._filtered()
         self._filter_caption(df)
         if df.empty:
-            body_text(root, "Không còn bản ghi với bộ lọc hiện tại. Đổi lọc ở Tổng quan / EDA / Trực quan.")
+            body_text(root, "Không còn bản ghi.")
             return
         insights = self._cached_insights(df)
         recs = generate_recommendations_dynamic(insights)
         section_title(root, f"Khuyến nghị ({len(recs)})")
         if not recs:
-            body_text(root, "Chưa có recommendation đủ bằng chứng trên bộ lọc hiện tại.", muted=True)
+            body_text(root, "Không có khuyến nghị.", muted=True)
             return
         for i, r in enumerate(recs, 1):
             insight_card(

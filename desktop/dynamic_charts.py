@@ -190,17 +190,3 @@ def gallery_specs(df: pd.DataFrame, roles: dict[str, Any], target: str) -> list[
         add("11. Khoảng cách theo nghỉ việc", lambda: chart_boxplot_by_target(df, dist, target, "Distance by Attrition", dist))
     add("12. Correlation heatmap", lambda: chart_correlation(df, target))
     return specs
-
-
-def build_gallery(df: pd.DataFrame, roles: dict[str, Any], target: str) -> list[dict[str, Any]]:
-    """Tương thích cũ: dựng toàn bộ figure (nặng — ưu tiên gallery_specs + render lần lượt)."""
-    items: list[dict[str, Any]] = []
-    for spec in gallery_specs(df, roles, target):
-        try:
-            out = spec["builder"]()
-            fig = out[0]
-            note = out[1] if len(out) > 1 else ""
-            items.append({"title": spec["title"], "fig": fig, "note": note})
-        except Exception as exc:  # noqa: BLE001
-            items.append({"title": spec["title"], "fig": None, "note": "", "error": str(exc)})
-    return items

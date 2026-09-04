@@ -190,16 +190,3 @@ def evaluate_regression(
         "R2": round(float(r2_score(y_test, y_pred)), 4),
     }
     return {"metrics": metrics, "y_pred": y_pred}
-
-
-def explain_confusion_hr(tn: int, fp: int, fn: int, tp: int) -> str:
-    """Giải thích confusion matrix trong ngữ cảnh HR."""
-    return (
-        f"- **True Negative ({tn})**: Dự đoán ở lại và thực tế ở lại.\n"
-        f"- **False Positive ({fp})**: Dự đoán nghỉ nhưng thực tế ở lại "
-        f"(có thể tốn nguồn lực giữ chân không cần thiết).\n"
-        f"- **False Negative ({fn})**: Dự đoán ở lại nhưng thực tế nghỉ việc "
-        f"— rủi ro cao vì bỏ lỡ nhân viên cần can thiệp.\n"
-        f"- **True Positive ({tp})**: Dự đoán nghỉ và thực tế nghỉ "
-        f"(phát hiện đúng nguy cơ)."
-    )
